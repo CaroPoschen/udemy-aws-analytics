@@ -30,13 +30,12 @@
   Windows:
 
   ```shell
-  rm ghactivity-downloader.zip
   cd ghalib
   7z a ../ghactivity-downloader.zip .
   cd ..
   7z u ghactivity-downloader.zip lambda_function.py
   ```
-
+  
 - write functions to download files from specific location, and upload them to S3, may have to specify the AWS profile
 
 - adjust environment variables in project as necessary
@@ -44,6 +43,8 @@
 - to upload files to S3 with Lambda, need to have write permissions on S3, can attach role to Lambda function
 
 - have functions to download files and then upload them to S3, valiadte every step incrementally
+
+- probably need to increase storage (and potentially runtime) to execute function
 
 - dataset is added to hourly, want to remember last processed file to continue with the next one, when it is available
 
