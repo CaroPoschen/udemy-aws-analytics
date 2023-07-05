@@ -58,7 +58,37 @@
 
 
 
-## Section 11 - Development Lifecycle for Python
+## Section 11 - Development Lifecycle for PySpark
+
+- set up virtual environment and install PySpark
+
+  ```shell
+  python3 -m venv deod-venv
+  .\deod-venv\Scripts\activate
+  pip install pyspark
+  ```
+
+- open PyCharm in folder above virtual environment and create program to test PySpark
+
+  ```python
+  from pyspark.sql import SparkSession
+       
+  spark = SparkSession. \
+      builder. \
+      master('local'). \
+      appName('GitHub Activity - Getting Started'). \
+      getOrCreate()
+       
+  spark.sql('SELECT current_date').show()
+  ```
+
+- write new functions to read, process, and write files
+
+- for productionizing, run it on a multinode cluster with yarn
+
+
+
+## Section 12 - Overview of Glue Components
 
 
 
