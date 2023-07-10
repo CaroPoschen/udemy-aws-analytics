@@ -90,5 +90,103 @@
 
 ## Section 12 - Overview of Glue Components
 
+Serverless integration Service
+
+AWS Glue has different components:
+
+- Glue Catalog
+  - Glue Crawlers
+  - Glue Databases and Tables
+- Glue Jobs
+- Glue Triggers
+- Glue Workflows
+
+Example
+
+- use Glue dataset flights,  crawler *Flights Data Crawler*, database *flights-db*, table *flightscsv*,
+  data from S3 bucket: *s3://crawler-public-us-east-1/flight/2016/csv*
+
+- use **Athena** as a serverless query engine to query the data
+
+  - needs S3 bucket to store results
+
+  - select appropriate database or database prefix to run queries
+
+  - check that data is copied successfully:
+
+    ```sql
+    SELECT count(1)
+    FROM "flights-db".flightscsv;
+    ```
+
+  - can save queries and use different workgroups in athena
+
+create **Glue Job** to change file format
+
+- need S3 bucket and role
+
+- bucket: *itv-flights*, policy: *ITVFlightsS3FullPolicy*, role: *ITVFlightsGlueRole*
+
+- create custom policy with these permissions:
+
+  ```json
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Sid": "ListObjectsInBucket",
+              "Effect": "Allow",
+              "Action": [
+                  "s3:ListBucket"
+              ],
+              "Resource": [
+                  "arn:aws:s3:::itv-flights"
+              ]
+          },
+          {
+              "Sid": "AllObjectActions",
+              "Effect": "Allow",
+              "Action": "s3:*Object",
+              "Resource": [
+                  "arn:aws:s3:::itv-flights/*"
+              ]
+          }
+      ]
+  }
+  ```
+
+- role contains new policy and AWSGlueServiceRole
+
+- need to have role with appropriate permissions to run Glue job
+- create job to change data format from csv to parquet
+- new visual UI to create jobs instead of way shown in course
+- create Glue crawler against new folder in bucket containing parquet files, may need to update IAM role
+- run crawler to create the Glue Catalog Table, then run queries in Athena to confirm run
+
+**Trigger**
+
+- create a trigger to run the crawler on demand
+- delete flightsparquet folder in S3 to recreate it using the trigger
+- start trigger to recreate the folder in S3 and validate using Athena
+
+**Glue Workflow**
+
+- trigger can only trigger one job/ crawler, use a workflow for orchestration
+- create workflow by giving it a name, then edit it by adding triggers
+- workflow is a simple graph
+- create workflow using the two existing crawlers and one job, triggering the first on demand, the others based on the events as the result of the previous step
+- drop existing tables and delete S3 bucket before running workflow to be able to validate workflow later
+- trigger the workflow and then validate the tables using Athena
+
+
+
+## Section 13 - Setup Spark History Server for Glue Jobs
+
+
+
+
+
+
+
 
 
