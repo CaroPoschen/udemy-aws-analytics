@@ -182,6 +182,28 @@ create **Glue Job** to change file format
 
 ## Section 13 - Setup Spark History Server for Glue Jobs
 
+Need Spark History Server to trouble shoot issues related to Spark using Glue Jobs
+
+- when setting up a Glue Job, can choose to save logs in S3 bucket
+- can use Spark History Server using AWS CloudFormation or locally on Docker
+  ``https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html``
+
+**CLoudFormation**
+
+- stack [template](https://aws-glue-sparkui-prod-us-east-1.s3.amazonaws.com/public/cfn/sparkui.yaml)
+- enter parameters for stack and create it, output ``SparkUIPublicUrl`` leads to page with logs
+- cheaper to use Docker locally, but need enough local reseources
+
+**Docker**
+
+- clone this [git repository](https://github.com/aws-samples/aws-glue-samples/tree/master)
+- folder ``utilities/Spark_UI`` contains docker file and instructions for how to set up the project to use it
+- build image and set up parameters, might have to update policies for IAM user
+
+
+
+## Section 14 - Deep Dive into Glue Catalog
+
 
 
 
