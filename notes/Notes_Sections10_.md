@@ -204,6 +204,87 @@ Need Spark History Server to trouble shoot issues related to Spark using Glue Jo
 
 ## Section 14 - Deep Dive into Glue Catalog
 
+**Prerequisites for Glue Crawler**
+
+- data in S3 or other supported data stores to crawl meta data to create tables
+- highly recommended to have structured data; for data from text files, should have a header
+- Glue should have appropriate permissions via IAM role to access the S3 buckets
+
+**Create Catalog Tables**
+
+- upload data to S3 (here JSON)
+- create crawler
+  - provide name
+  - configure IAM Role
+  - Configure Source
+
+**Download data and save to S3**
+
+- download data from github archive to analyze, need a lot of data, so use three days worth of data
+
+  ```shell
+  mkdir ~/Downloads/ghactivity
+  cd ~/Downloads/ghactivity
+  wget https://data.gharchive.org/2021-01-13-{0..23}.json.gz
+  wget https://data.gharchive.org/2021-01-14-{0..23}.json.gz
+  wget https://data.gharchive.org/2021-01-15-{0..23}.json.gz
+  ```
+
+- upload data to S3 using web console or AWS CLI into folder *landing/ghactivity*
+
+**Create Glue Catalog Table and Validate using Athena**
+
+- more formal approach is to first create the database and then the crawler in GLue
+
+- create database called *itvghlandingdb*
+
+- create crawler *GHActivity Landing Crawler* to crawl S3 bucket folder and create table and data catalog in Glue, crawler will infer schema from JSON attributes in the data
+
+- when crawler is done, run queries using Athena to validate data
+
+  ```sql
+  select count(1) from "ghactivity";
+  
+  select count(1), count(distinct repo.id) from "ghactivity"
+  where type = 'CreateEvent' and payload.ref_type = 'repository';
+  
+  select substr("created_at", 1, 10), count(1), count(distinct id)
+  from "ghactivity"
+  where type = 'CreateEvent' and "payload".ref_type = 'repository'
+  group by substr("created_at", 1, 10);
+  ```
+
+- can use Athena to build dashboards with query results from data in S3 using Glue catalog tables
+
+**Use one Crawler for Multiple Datasets/ Tables**
+
+- use data from retail_db github project from section 6
+- create new S3 bucket to store data in there, may need to adjust policy for user
+- create crawler, give parent folder for all subfolders, if subfolders are in different folders, need to add all parent folders
+
+**CLI**
+
+- check that current user has CLI access on Glue
+  ``aws glue list-crawlers --profile itvgithub --region eu-north-1``
+- get details for crawler `` aws glue get-crawler --name "Retail Crawler" --profile itvgithub``
+- start crawler `` aws glue start-crawler --name "Retail Crawler" --profile itvgithub``
+- confirm status by running previous command `` aws glue get-crawler --name "Retail Crawler" --profile itvgithub``
+- now see all created tables in AWS Console or using ``aws glue get-databases --profile itvgithub``
+- can validate in Athena again
+- can check tables similarly
+- crawlers usually created in web console, but can be run using CLI or script, to create/ update the tables
+
+**Managing Glue Catalog using Boto3**
+
+- drop table retail_db
+- run commands in python to get status and information on crawlers, tables and databases
+
+
+
+## Section 15 - Exploring Glue Job APIs
+
+
+
 
 
 
