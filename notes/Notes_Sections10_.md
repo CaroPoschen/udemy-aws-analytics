@@ -234,7 +234,7 @@ Need Spark History Server to trouble shoot issues related to Spark using Glue Jo
 
 **Create Glue Catalog Table and Validate using Athena**
 
-- more formal approach is to first create the database and then the crawler in GLue
+- more formal approach is to first create the database and then the crawler in Glue
 
 - create database called *itvghlandingdb*
 
@@ -283,13 +283,83 @@ Need Spark History Server to trouble shoot issues related to Spark using Glue Jo
 
 ## Section 15 - Exploring Glue Job APIs
 
+- need read permission on landing folder and write permission on raw folder, may need to adjust policy
+- create new job to transform json files to parquet
+- run newly created job
+- job failed for missing delete permission on S3 bucket, adjust policy
+- delete files that were copied in S3 folder to rerun job completely, then rerun job again
+- after successful run, can create new crawler to update Glue catalog to run queries in Athena to verify
+- may run into issues because of null values in data when transforming to parquet, will be addressed later
+
+**Use Partition when transforming data**
+
+- change script to this:
+
+  ```python
+  import sys
+  from awsglue.transforms import *
+  from awsglue.utils import getResolvedOptions
+  from pyspark.context import SparkContext
+  from pyspark.sql.functions import date_format, substring
+  from awsglue.context import GlueContext
+  from awsglue.job import Job
+  from awsglue.dynamicframe import DynamicFrame
+   
+  ## @params: [JOB_NAME]
+  args = getResolvedOptions(sys.argv, ['JOB_NAME'])
+   
+  sc = SparkContext()
+  glueContext = GlueContext(sc)
+  spark = glueContext.spark_session
+  job = Job(glueContext)
+  job.init(args['JOB_NAME'], args)
+   
+  datasource0 = glueContext. \
+    create_dynamic_frame. \
+    from_catalog(
+      database = "itvghactivitylandingdb",
+      table_name = "ghactivity",
+      transformation_ctx = "datasource0"
+    )
+   
+  df = datasource0. \
+    toDF(). \
+    withColumn('year', date_format(substring('created_at', 1, 10), 'yyyy')). \
+    withColumn('month', date_format(substring('created_at', 1, 10), 'MM')). \
+    withColumn('day', date_format(substring('created_at', 1, 10), 'dd'))
+   
+  dyf = DynamicFrame.fromDF(dataframe=df, glue_ctx=glueContext, name="dyf")
+   
+  datasink4 = glueContext. \
+    write_dynamic_frame. \
+    from_options(frame=dyf,
+      connection_type="s3",
+      connection_options={"path": "s3://itv-github-bucket-1/raw/ghactivity/",
+        "compression": "snappy",
+        "partitionKeys": ["year", "month", "day"]},
+      format="glueparquet",
+      transformation_ctx="datasink4")
+   
+  job.commit()
+  ```
+
+- create columns for year, month and day as data frame and then convert back to dynamic frame
+
+- use partition keys year, month, day when transforming data
+
+- most code is the same as previously apart from the partition
+
+- run job
+
+- see files with the new folder structure based on the partitions
+
+- run crawler again to have partitions also in Glue catalog table, to then run Athena queries to validate
+
+- run queries against both source and target to validate that no data is lost
 
 
 
-
-
-
-
+## Section 16 - Glue Job Bookmarks
 
 
 
