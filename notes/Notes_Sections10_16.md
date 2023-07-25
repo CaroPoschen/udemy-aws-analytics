@@ -1,6 +1,6 @@
 # Data Engineering using AWS Analytics Services
 
-**Sections 10 - **
+**Sections 10 - 16**
 
 
 
@@ -360,6 +360,107 @@ Need Spark History Server to trouble shoot issues related to Spark using Glue Jo
 
 
 ## Section 16 - Glue Job Bookmarks
+
+In production, want incremental processing: regularly update data, can use Glue bookmarks for that, too remember last processed job
+
+- delete data from raw bucket to update it using incremental processing
+- list all Glue jobs in CLI assuming proper credentials are configured: ``aws glue list-jobs``
+- enable bookmarking for job in console, then run job again
+- after successful run of the job, run Athena queries again for validation
+
+**CLI** assuming proper credentials are configured
+
+- list all jobs: ``aws glue list-jobs``
+- get details of specific job: ``aws glue get-job --job-name [job name]``
+  - see all information for a job here
+  - can also check that bookmarks are enabled under default arguments: *"--job-bookmark-option": "job-bookmark-enable"*
+- get details about job runs: ``aws glue get-job-runs --job-name [job name]``, descending order, including error message
+- to get information about a specific run: ``aws glue get-job-runs --job-name [job name] --run-id [run id]``, requires AWS CLI v2
+- get bookmark information: ``aws glue get-job-bookmark --job-name [job name]``
+- reset bookmark: removes the bookmark, so job can start again from the beginning, can also reset to a particular run using run id: ``aws glue reset-job-bookmark --job-name [job name]``
+
+**Use bookmarks for new data**
+
+- download data github activity data for new date: ``wget https://data.gharchive.org/2021-01-16-{0..23}.json.gz``
+
+- upload data to s3
+
+  ```shell
+  aws s3 cp . s3://itv-github-bucket-1/landing/ghactivity/ \
+  	--exclude "*" \
+  	--include "2021-01-16*" \
+  	--recursive
+  ```
+
+- check that data is on s3: ``aws s3 ls s3://itv-github-bucket-1/landing/ghactivity/``
+
+- list all days for which data is currently in the raw zone (proccessed by the job): ``aws s3 ls s3://itv-github-bucket-1/raw/ghactivity/year=2021/month=01/``
+
+- get bookmark information on job: ``aws glue get-job-bookmark --job-name github-json_to_parquet``
+
+- start job from console, returns run id
+
+  ```shell
+  aws glue \
+  	start-job-run \
+  	--job-name github-json_to_parquet \
+  	--worker-type G.1X \
+  	--number-of-workers 10
+  ```
+
+- get job status: ``aws glue get-job-run --job-name github-json_to_parquet --run-id [run id]``
+
+**Validate job run with bookmark**
+
+- check bookmark info: ``aws glue get-job-bookmark --job-name github-json_to_parquet``
+
+- check new folder for month in S3: ``aws s3 ls s3://itv-github-bucket-1/raw/ghactivity/year=2021/month=01/``
+
+- check all files and their upload date/time in S3: ``aws s3 ls s3://itv-github-bucket-1/raw/ghactivity/year=2021/month=01/ --recursive``, all files for first three days around the same time, new day at a different time
+
+- need to recrawl the bucket to update the glue catalog table
+
+- get information about table:
+
+  ```shell
+  aws glue get-table \
+  --database-name itvghactivityrawdb \
+  --name ghactivity
+  ```
+
+- get details about partitions:
+
+  ```shell
+  aws glue get-partitions \
+  	--database-name itvghactivityrawdb \
+  	--table-name ghactivity
+  ```
+
+- recrawl the table: ``aws glue start-crawler --name "GHActivity Raw Crawler"``
+
+- check partitions again in CLI and see new partition for newly added data
+
+- Cannot just run query in Athena when using partitions (Schema mismatch)
+
+- need to drop partitions in Athena to run queries, check AWS User Guide
+
+- drop partition (enough to just drop one partition) and then repair table:
+
+  ```sql
+  ALTER TABLE itvghactivityrawdb.ghactivity
+  DROP PARTITION (year = '2021', month = '01', day = '16');
+  
+  show partitions itvghactivityrawdb.ghactivity;
+  
+  msck repair table itvghactivityrawdb.ghactivity;
+  
+  show partitions itvghactivityrawdb.ghactivity;
+  ```
+
+- the run count on table and compare with previous runs to see added data:
+  ``select count(1) from itvghactivityrawdb.ghactivity;``
+
+
 
 
 
